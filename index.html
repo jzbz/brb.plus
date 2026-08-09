@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>brb — Blu-ray Backup</title>
+    <meta name="description"
+        content="brb bin-packs a directory tree into disc-sized groups, builds one mountable SquashFS image per disc, encrypts it with age and protects it with par2. Every disc is independent. The last step of a restore needs nothing but the Linux kernel.">
+    <meta name="theme-color" content="#1A1B1E">
+    <meta name="color-scheme" content="dark">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="brb.plus">
+    <meta property="og:url" content="https://brb.plus/">
+    <meta property="og:title" content="brb — Blu-ray Backup">
+    <meta property="og:description"
+        content="Independent, mountable, encrypted backup discs. Losing disc 7 loses exactly the files on disc 7; every other disc still restores on its own.">
+    <meta property="og:image" content="https://brb.plus/assets/images/og.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt"
+        content="brb — Blu-ray Backup. Independent, mountable, encrypted backup discs. mount -o loop,ro disc07.squashfs /mnt">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://brb.plus/">
+    <meta name="twitter:title" content="brb — Blu-ray Backup">
+    <meta name="twitter:description"
+        content="Independent, mountable, encrypted backup discs. Losing disc 7 loses exactly the files on disc 7; every other disc still restores on its own.">
+    <meta name="twitter:image" content="https://brb.plus/assets/images/og.png">
+    <meta name="twitter:image:alt"
+        content="brb — Blu-ray Backup. Independent, mountable, encrypted backup discs.">
+
+    <link rel="stylesheet" href="assets/style.css" media="all">
+    <link rel="icon" href="assets/images/brb.svg" type="image/svg+xml">
+    <link rel="mask-icon" href="assets/images/brb.svg" color="#4CC9F0">
+    <link rel="preload" href="assets/fonts/scp.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- Enhancements are opt-in. The flag is set here to avoid a flash, but it
+         is withdrawn again unless assets/main.js actually reaches its first
+         line: a 404, a CSP block or a parse error must not leave the page
+         blank. -->
+    <script>
+        (function () {
+            var d = document.documentElement;
+            d.classList.add('js');
+            setTimeout(function () {
+                if (!d.dataset.enhanced) d.classList.remove('js');
+            }, 2000);
+        })();
+    </script>
+</head>
+
+<body>
+    <canvas id="rot" aria-hidden="true"></canvas>
+
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="wrap header-inner">
+            <a class="brand" href="index.html">
+                <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                    <g transform="rotate(-90 16 16)" fill="none" stroke-linecap="butt">
+                        <circle cx="16" cy="16" r="10.5" stroke="#454B55" stroke-width="6"
+                            stroke-dasharray="6.25 2" />
+                        <circle class="brand-arc" cx="16" cy="16" r="10.5" stroke="#4CC9F0" stroke-width="6"
+                            stroke-dasharray="6.25 2 6.25 2 6.25 2 6.25 2 6.25 2 6.25 2 6.25 10.223" />
+                    </g>
+                    <circle cx="16" cy="16" r="2.6" fill="#292A2D" />
+                    <circle cx="16" cy="16" r="2.6" fill="none" stroke="#454B55" stroke-width="1.2" />
+                </svg>
+                <span class="brand-text" data-text="brb">brb</span>
+                <span class="brand-cursor" aria-hidden="true"></span>
+            </a>
+            <nav class="site-nav" aria-label="Sections">
+                <a href="#independence">Independence</a>
+                <a href="#pipeline">Pipeline</a>
+                <a href="#disc">On the disc</a>
+                <a href="#restore">Restore</a>
+                <a href="#install">Install</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+
+        <!-- ─────────────────────────────  HERO  ───────────────────────────── -->
+        <section class="hero">
+            <div class="wrap hero-grid">
+                <div class="hero-copy reveal">
+                    <h1 class="hero-title">brb</h1>
+                    <p class="hero-tagline">Independent, mountable, encrypted backup discs.</p>
+                    <p class="hero-body">
+                        <span class="nowrap-md">brb</span> bin-packs a directory tree into disc-sized groups,
+                        builds one self-contained SquashFS image per disc, encrypts it with
+                        <a href="https://age-encryption.org" rel="noopener noreferrer" target="_blank">age</a>,
+                        computes par2 recovery data over the ciphertext, and images each disc to an ISO ready to
+                        burn to BD-R, BD-R&nbsp;DL or BDXL.
+                    </p>
+
+                    <figure class="mount-line">
+                        <figcaption>The last step of a restore is</figcaption>
+                        <div class="cmd" data-copy>
+                            <code><span class="tok-cmd">mount</span> -o loop,ro disc07.squashfs /mnt</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="mount-note">
+                            which needs nothing but the Linux kernel — no <span class="nowrap">brb</span>, no Python,
+                            no bespoke archive format.
+                        </p>
+                    </figure>
+
+                    <div class="hero-actions">
+                        <a class="btn btn-primary" href="#install">Install</a>
+                        <a class="btn" href="https://github.com/jzbz/brb" rel="noopener noreferrer"
+                            target="_blank">Source</a>
+                        <span class="ver">v1.0.0 · MIT</span>
+                    </div>
+                </div>
+
+                <!-- ── terminal ── -->
+                <div class="hero-term reveal">
+                    <div class="term" id="term">
+                        <div class="term-bar">
+                            <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                            <span class="term-title">brb 1.0.0</span>
+                            <button class="term-replay" type="button" id="term-replay">replay</button>
+                        </div>
+                        <pre class="term-body" tabindex="0" aria-label="Recorded output from brb plan followed by brb backup"><code
+><span class="l"><span class="p-cmd">$</span> brb plan</span>
+<span class="l"><span class="p-step">   .</span> config: /home/jz/.config/brb/config</span>
+<span class="l"><span class="p-log">==&gt;</span> scanning /home/jz</span>
+<span class="l"><span class="p-ok">  ok</span> 431006 entries, 198.42 GiB of file data before compression</span>
+<span class="l"><span class="p-log">==&gt;</span> planning disc layout (dry run, nothing is built)</span>
+<span class="l"><span class="p-step">   .</span> raw content budget per disc: 20.49 GiB  (image budget 20.49 GiB / ratio 1.000)</span>
+<span class="l"><span class="p-step">   .</span> disc 01: 118204 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 02:  47455 files, 20.48 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 03:  91620 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 04:  62933 files, 20.47 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 05:  38017 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 06:  21744 files, 20.48 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 07:  15108 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 08:   9622 files, 20.46 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 09:   5904 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-step">   .</span> disc 10:   2232 files, 14.08 GiB raw</span>
+<span class="l"><span class="p-ok">  ok</span> 10 disc(s) at pack ratio 1.000, 198.42 GiB of raw content</span>
+<span class="l"><span class="p-cmd">$</span> brb backup --verify-roundtrip</span>
+<span class="l"><span class="p-warn">warn</span> staging holds UNENCRYPTED squashfs images while the backup runs</span>
+<span class="l"><span class="p-step">   .</span> each image is deleted as soon as it is encrypted and verified</span>
+<span class="l"><span class="p-raw">Continue? [y/N] y</span></span>
+<span class="l"><span class="p-log">==&gt;</span> building images (image budget 20.49 GiB per disc)</span>
+<span class="l"><span class="p-step">   .</span> disc 1: packing 118204 files, 20.49 GiB raw</span>
+<span class="l"><span class="p-ok">  ok</span> disc 1 image: 17.24 GiB (compressed to 0.841 of raw)</span>
+<span class="l"><span class="p-step">   .</span> encrypting and hashing disc01.squashfs</span>
+<span class="l"><span class="p-step">   . encrypt disc01.squashfs</span> <span class="bar" data-bytes="18510611578">[========================] 100.0%  17.24 GiB / 17.24 GiB</span></span>
+<span class="l"><span class="p-step">   .</span> generating 10% recovery data (17652 blocks of 1.00 MiB, 1765 recovery blocks)</span>
+<span class="l"><span class="p-step">   .</span> verifying disc 1 decrypts back to the same bytes</span>
+<span class="l"><span class="p-ok">  ok</span> disc 1 round-trip verified</span>
+<span class="l"><span class="p-ok">  ok</span> disc01.squashfs encrypted, protected, plaintext removed</span>
+<span class="l"><span class="p-ok">  ok</span> backup complete in 214 minute(s)</span>
+<span class="l"><span class="cur" aria-hidden="true"></span></span></code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ───────────────────────  INDEPENDENCE  ─────────────────────── -->
+        <section id="independence" class="sec">
+            <div class="wrap">
+                <p class="eyebrow reveal">01 — the whole idea</p>
+                <h2 class="reveal">Every disc is independent.</h2>
+                <p class="lede reveal">
+                    Losing disc 7 loses exactly the files on disc 7. Every other disc still restores on its own.
+                    There is no parity spread across the set, no volume 1 of 20 that the rest depend on, no
+                    catalogue you have to find first. Each disc is a complete, mountable filesystem.
+                </p>
+
+                <div class="discset reveal" id="discset">
+                    <div class="discset-top">
+                        <p class="discset-hint" id="discset-hint">
+                            Ten discs, 412,839 files, 198.42 GiB. Each one restores on its own.
+                        </p>
+                        <div class="mode" role="radiogroup" aria-label="Archive format">
+                            <label class="mode-opt">
+                                <input type="radio" name="setmode" value="brb" checked>
+                                <span>brb — one image per disc</span>
+                            </label>
+                            <label class="mode-opt">
+                                <input type="radio" name="setmode" value="split">
+                                <span>one stream, split across discs</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="discs" id="discs" role="group" aria-label="A ten-disc backup set">
+                        <button type="button" class="disc" data-state="ok" data-files="118204" data-gib="20.49"
+                                style="--sheen: 0deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 01</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="47455" data-gib="20.48"
+                                style="--sheen: 37deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 02</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="91620" data-gib="20.49"
+                                style="--sheen: 74deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 03</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="62933" data-gib="20.47"
+                                style="--sheen: 111deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 04</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="38017" data-gib="20.49"
+                                style="--sheen: 148deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 05</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="21744" data-gib="20.48"
+                                style="--sheen: 185deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 06</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="15108" data-gib="20.49"
+                                style="--sheen: 222deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 07</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="9622" data-gib="20.46"
+                                style="--sheen: 259deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 08</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="5904" data-gib="20.49"
+                                style="--sheen: 296deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 09</span>
+                        </button>
+                        <button type="button" class="disc" data-state="ok" data-files="2232" data-gib="14.08"
+                                style="--sheen: 333deg">
+                            <span class="disc-face"></span>
+                            <span class="disc-label">disc 10</span>
+                        </button>
+                    </div>
+
+                    <div class="discset-readout" id="readout" aria-live="polite">
+                        <div class="ro-row">
+                            <span class="ro-key">set</span>
+                            <span class="ro-val" id="ro-set"><b>10</b> of 10 discs restore on their own</span>
+                        </div>
+                        <div class="ro-row">
+                            <span class="ro-key">files</span>
+                            <span class="ro-val" id="ro-files"><b>412,839</b> of 412,839 still restore</span>
+                        </div>
+                        <div class="ro-row">
+                            <span class="ro-key">data</span>
+                            <span class="ro-val" id="ro-data"><b>198.42 GiB</b> of 198.42 GiB still restore</span>
+                        </div>
+                        <p class="ro-note" id="ro-note">
+                            Nothing is damaged. Any one of these discs restores its own files without the other nine.
+                        </p>
+                    </div>
+
+                    <button class="btn btn-small" type="button" id="discs-reset">Reset the set</button>
+                </div>
+
+                <div class="cards reveal">
+                    <article class="card">
+                        <h3>A scratch is not a loss</h3>
+                        <p>
+                            par2 recovery data is computed over the <em>encrypted</em> bytes, at 10% by default, so it
+                            protects exactly what is physically on the disc. A disc that no longer reads cleanly is
+                            copied off, repaired from the par2 volumes stored beside it, then decrypted as normal.
+                            Nothing is written back to the disc — a BD-R is written once.
+                        </p>
+                    </article>
+                    <article class="card">
+                        <h3>A loss is bounded</h3>
+                        <p>
+                            When par2 cannot repair an image, brb refuses to decrypt it rather than hand you plausible
+                            garbage. You lose that disc's files and nothing else — and the encrypted index on every
+                            other disc still tells you exactly which files those were.
+                        </p>
+                    </article>
+                    <article class="card">
+                        <h3>Every disc carries the shape</h3>
+                        <p>
+                            Each disc carries the full directory skeleton of the original tree — directories, symlinks,
+                            device nodes. Mount any single disc and you see the whole shape of the backup, with that
+                            disc's files present and the rest absent.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──────────────────────────  PIPELINE  ────────────────────────── -->
+        <section id="pipeline" class="sec sec-alt">
+            <div class="wrap">
+                <p class="eyebrow reveal">02 — how a disc is made</p>
+                <h2 class="reveal">One direction, and nothing invented at the end of it.</h2>
+                <p class="lede reveal">
+                    The bin-packer is brb's own. Everything it hands off to is a format that was specified,
+                    documented and widely implemented long before brb, and that has every chance of outlasting it.
+                </p>
+
+                <ol class="pipe reveal" id="pipe">
+                    <li class="pipe-stage" data-stage>
+                        <details class="pipe-det" open>
+                        <summary class="pipe-head">
+                            <span class="pipe-n">1</span>
+                            <span class="pipe-name">bin-pack</span>
+                            <span class="pipe-sub">the tree into disc-sized groups</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                Files are sorted largest-first and packed greedily into one open disc at a time,
+                                backfilling smaller files into whatever budget is left. Hard-link groups are one
+                                indivisible unit, charged once. A single file larger than one disc is detected and
+                                refused rather than silently dropped.
+                            </p>
+                            <p class="pipe-note">
+                                Discs are packed by <em>uncompressed</em> size, so brb has to guess the compression
+                                ratio before it compresses. It re-learns that guess from every finished disc.
+                            </p>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                    <li class="pipe-stage" data-stage>
+                        <details class="pipe-det">
+                        <summary class="pipe-head">
+                            <span class="pipe-n">2</span>
+                            <span class="pipe-name">mksquashfs</span>
+                            <span class="pipe-sub">one self-contained image per disc</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                The image is a plain SquashFS 4.0 filesystem — zstd, 1 MiB blocks, xattrs preserved.
+                                The file list arrives on stdin as NUL-delimited paths, so no filename can be
+                                misparsed.
+                            </p>
+                            <pre class="argv"><code>mksquashfs - disc01.squashfs -cpiostyle0 -no-progress -quiet \
+  -b 1M -xattrs -no-exports -comp zstd -Xcompression-level 19</code></pre>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                    <li class="pipe-stage" data-stage>
+                        <details class="pipe-det">
+                        <summary class="pipe-head">
+                            <span class="pipe-n">3</span>
+                            <span class="pipe-name">age</span>
+                            <span class="pipe-sub">encrypt the image to public keys</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                Encryption uses the age library in-process, not the age binary, so the format is
+                                identical and one fewer thing has to be installed. Both the plaintext and ciphertext SHA-512 are computed in the same pass. The ciphertext
+                                hash is the one that describes what is physically on the disc; the plaintext hash is
+                                what proves the decryption came back right.
+                            </p>
+                            <p class="pipe-note">
+                                Backup needs <strong>public keys only</strong>, so no secret sits on the backup machine
+                                for the days a set takes to build. The one exception is
+                                <code>--verify-roundtrip</code>, which decrypts each image back and compares hashes
+                                before the plaintext is deleted: that needs the identity present for the run, and it
+                                is the only way to prove the set decrypts while you can still do something about it.
+                            </p>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                    <li class="pipe-stage" data-stage>
+                        <details class="pipe-det">
+                        <summary class="pipe-head">
+                            <span class="pipe-n">4</span>
+                            <span class="pipe-name">par2</span>
+                            <span class="pipe-sub">recovery data over the ciphertext</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                Parity is computed over the encrypted bytes — the ones that will actually rot — at 10%
+                                by default. The small files beside it (the hashes and the encrypted index) get their
+                                own par2 set at 50%, because they are tiny and losing them is annoying.
+                            </p>
+                            <pre class="argv"><code>par2 create -q -r10 -n1 -b17652 -- disc01.squashfs.age</code></pre>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                    <li class="pipe-stage" data-stage>
+                        <details class="pipe-det">
+                        <summary class="pipe-head">
+                            <span class="pipe-n">5</span>
+                            <span class="pipe-name">xorriso</span>
+                            <span class="pipe-sub">one ISO per disc</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                ISO 9660 level 3 with Rock Ridge and Joliet. Level 3 multi-extent is what allows image
+                                files above 4 GiB. Not UDF — xorriso cannot write it, so brb does not claim otherwise
+                                on the disc. Every Linux system reads ISO 9660 anyway; some appliances that expect UDF
+                                on Blu-ray may not.
+                            </p>
+                            <pre class="argv"><code>xorriso -as mkisofs -quiet -iso-level 3 -r -J -joliet-long \
+  -V BACKUP_01_OF_10 -A "brb 1.0.0" -o disc01.iso discs/disc01</code></pre>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                    <li class="pipe-stage pipe-end" data-stage>
+                        <details class="pipe-det">
+                        <summary class="pipe-head">
+                            <span class="pipe-n">6</span>
+                            <span class="pipe-name">BD-R</span>
+                            <span class="pipe-sub">write it, then read it back</span>
+                        </summary>
+                        <div class="pipe-body">
+                            <div class="pipe-inner">
+                            <p>
+                                ISOs are built as each disc goes into the drive and removed once it is written, so
+                                staging stays near the size of the compressed set rather than roughly 2.2&times; that size for
+                                the length of a burn campaign. <code>verify-disc</code> then reads the burned disc back
+                                and checks every hash.
+                            </p>
+                            </div>
+                        </div>
+                        </details>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- ────────────────────────  ON THE DISC  ────────────────────────── -->
+        <section id="disc" class="sec">
+            <div class="wrap">
+                <p class="eyebrow reveal">03 — what you can hold</p>
+                <h2 class="reveal">What ends up on each disc.</h2>
+                <p class="lede reveal">
+                    Nothing on a disc is a private format. The image is a filesystem, the hashes are GNU
+                    <code>sha512sum</code> files, the index is a two-column TSV, and the recovery data is par2. All of
+                    it is legible to tools that predate brb by decades.
+                </p>
+
+                <div class="disc-grid">
+                    <pre class="tree reveal"><code><span class="t-f">README.md</span>                       <span class="t-c">restore instructions, written for a stranger</span>
+<span class="t-f">MANIFEST.txt</span>                    <span class="t-c">the whole set, and the exact tool versions used</span>
+<span class="t-f">SHA512SUMS</span>                      <span class="t-c">hashes of every file on this disc</span>
+<span class="t-f">brb.sh</span>                          <span class="t-c">the bash reader — about a thousand lines</span>
+<span class="t-f">brb-linux-amd64</span>                 <span class="t-c">static Go binary, 64-bit Intel/AMD</span>
+<span class="t-f">brb-linux-aarch64</span>               <span class="t-c">static Go binary, 64-bit ARM</span>
+<span class="t-f">brb-src.tar.gz</span>                  <span class="t-c">complete source, dependencies vendored</span>
+<span class="t-d">data/</span>
+  <span class="t-f">disc01.squashfs.age</span>           <span class="t-c">the filesystem image, encrypted</span>
+  <span class="t-f">disc01.squashfs.age.sha512</span>    <span class="t-c">hash of the encrypted image</span>
+  <span class="t-f">disc01.squashfs.sha512</span>        <span class="t-c">hash of the image AFTER decryption</span>
+  <span class="t-f">disc01.squashfs.age.par2</span>      <span class="t-c">par2 index</span>
+  <span class="t-f">disc01.squashfs.age.vol*.par2</span> <span class="t-c">recovery data, 10%</span>
+  <span class="t-f">index.tsv.gz.age</span>              <span class="t-c">which disc holds which file, encrypted</span>
+  <span class="t-f">index.tsv.gz.age.sha512</span>       <span class="t-c">hash of the encrypted index</span>
+  <span class="t-f">sidecars.par2</span>                 <span class="t-c">par2 index for the small files</span>
+  <span class="t-f">sidecars.vol*.par2</span>            <span class="t-c">recovery data for them, 50%</span></code></pre>
+
+                    <aside class="disc-aside reveal">
+                        <h3>Why two compressors</h3>
+                        <p>
+                            The images are zstd; the index and the source tarball are gzip. The deciding question is
+                            not the ratio — it is <strong>who has to decompress it, and what they have installed at
+                                the time.</strong>
+                        </p>
+                        <dl class="mini">
+                            <dt><code>discNN.squashfs</code></dt>
+                            <dd>zstd · hundreds of GB · decompressed by <strong>the kernel</strong>, on
+                                <code>mount -o loop</code></dd>
+                            <dt><code>index.tsv.gz.age</code></dt>
+                            <dd>gzip · KB to tens of MB · decompressed by <strong>a person</strong>, with a userspace
+                                tool</dd>
+                        </dl>
+                        <p>
+                            The index is what you reach for when a disc has been <em>lost</em> — quite possibly from a
+                            rescue USB or a borrowed machine. <code>gunzip</code> has been on every Unix since 1992.
+                            zstd dates from 2016. The saving would be a rounding error on a 23 GiB disc, and this is
+                            the path you are most likely to be walking when something has already gone wrong.
+                        </p>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────  RESTORE  ──────────────────────────── -->
+        <section id="restore" class="sec sec-alt">
+            <div class="wrap">
+                <p class="eyebrow reveal">04 — the point of the design</p>
+                <h2 class="reveal">Restoring without brb.</h2>
+                <p class="lede reveal">
+                    A backup format that needs its own software to read is a bet that the software survives. This one
+                    does not take that bet. Given one disc and your age identity, the whole restore path is four
+                    standard commands:
+                </p>
+
+                <ul class="ladder reveal" aria-label="What each step needs installed">
+                    <li><code>cp</code><span>coreutils</span></li>
+                    <li><code>sha512sum</code><span>coreutils</span></li>
+                    <li><code>par2</code><span>only if it rotted</span></li>
+                    <li><code>age</code><span>one static binary</span></li>
+                    <li class="ladder-none"><code>mount</code><span>the kernel</span></li>
+                </ul>
+
+                <ol class="recipe reveal">
+                    <li>
+                        <div class="cmd" data-copy>
+                            <code>cp /mnt/data/disc07.squashfs.age .</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p>Take the image off the disc. If it will not read cleanly, use <code>ddrescue</code> — it
+                            fills unreadable regions with zeros and keeps going, which is exactly what par2 needs.</p>
+                    </li>
+                    <li>
+                        <div class="cmd" data-copy>
+                            <code>sha512sum -c disc07.squashfs.age.sha512 || par2 repair -- disc07.squashfs.age.par2</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p>Check it, and repair it if the disc has rotted.</p>
+                    </li>
+                    <li>
+                        <div class="cmd" data-copy>
+                            <code>age -d -i identity.txt -o disc07.squashfs disc07.squashfs.age</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p>Decrypt it. A passphrase-protected identity works anywhere a plain one does.</p>
+                    </li>
+                    <li>
+                        <div class="cmd cmd-final" data-copy>
+                            <code>mount -o loop,ro disc07.squashfs /mnt</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p>Mount it. <strong>This step needs only the kernel.</strong>
+                            <code>unsquashfs -d /dest disc07.squashfs</code> extracts instead, if you would rather
+                            have the files than the mount.</p>
+                    </li>
+                </ol>
+
+                <div class="split">
+                    <div class="reveal">
+                        <h3>Two programs, one format</h3>
+                        <p>
+                            brb ships as two implementations with a deliberate split. The Go build is the tool you use
+                            day to day. The bash script exists for one reason: a restore fifteen years from now, by
+                            someone holding a disc and no particular reason to trust a static binary.
+                        </p>
+                        <div class="tbl-wrap">
+                        <table class="tbl">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Implementation</th>
+                                    <th scope="col">Can</th>
+                                    <th scope="col">Commands</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th scope="row">Go<br><span class="dim">brb-linux-amd64</span></th>
+                                    <td class="yes">writes and reads</td>
+                                    <td>doctor, init-key, plan, backup, burn, iso, verify-disc, ingest, restore,
+                                        mount, list, index</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">bash<br><span class="dim">brb.sh</span></th>
+                                    <td class="part">reads only</td>
+                                    <td>doctor, verify-disc, ingest, restore, mount, list, index</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                        <p class="fine">
+                            <code>brb.sh</code> refuses <code>backup</code>, <code>plan</code>, <code>burn</code>,
+                            <code>iso</code> and <code>init-key</code> by name and says where they went, rather than
+                            failing as an unknown command.
+                        </p>
+                    </div>
+                    <div class="reveal">
+                        <h3>Held to the same format</h3>
+                        <p>
+                            A cross-compatibility suite builds a set with the Go build and reads it with both, then
+                            asserts they produce identical answers — down to the encrypted index and the byte-for-byte
+                            restored tree. It also runs the recipe printed on the disc itself, with neither
+                            implementation involved.
+                        </p>
+                        <p>
+                            Then it damages a set on purpose. A rotted <code>.sha512</code> sidecar must not condemn an
+                            image par2 proves is whole; an image par2 <em>cannot</em> repair must still be refused
+                            rather than decrypted.
+                        </p>
+                        <p class="fine">
+                            Where the two genuinely differ, the check is written the way it ought to pass and marked
+                            <code>XFAIL</code> with the divergence named. An <code>XFAIL</code> that starts passing is
+                            reported as <code>XPASS</code> and counted as a failure, so a fixed divergence gets
+                            promoted to a real assertion instead of sitting in the ledger forever.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ───────────────────────────  KEYS  ───────────────────────────── -->
+        <section id="keys" class="sec">
+            <div class="wrap">
+                <p class="eyebrow reveal">05 — keys</p>
+                <h2 class="reveal">Public keys go in. Nothing secret has to.</h2>
+
+                <div class="split">
+                    <div class="reveal">
+                        <p class="lede">
+                            Every line of the recipients file is an age recipient, every image is encrypted to all of
+                            them, and any single matching identity restores the whole set on its own. Compromising the
+                            backup machine yields nothing that outlives the compromise — unless you are running
+                            <code>--verify-roundtrip</code>, which needs the identity there for the length of the run.
+                        </p>
+                        <p>
+                            The price of that design is a single point of failure in the other direction: lose your
+                            identity file and the archive is gone, permanently and irrecoverably. So back it up
+                            somewhere that is not these discs — a password manager, and printed on paper. It is one
+                            short line.
+                        </p>
+                        <p>
+                            You can also give yourself a second way in: a rescue key. Mint a second keypair whose
+                            private half never touches the disk in plaintext —
+                        </p>
+                        <div class="cmd" data-copy>
+                            <code>age-keygen | age -p -o ~/.config/brb/rescue-identity.txt.age</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">
+                            The identity goes from <code>age-keygen</code>'s stdout straight into <code>age -p</code>'s
+                            stdin. It is never a file, so there is nothing to shred afterwards — which matters, because
+                            <code>shred</code> cannot promise anything on a copy-on-write, compressed or
+                            flash-translated filesystem. What lands on disk is a small file encrypted under a
+                            passphrase you chose, and it is inert without that passphrase.
+                        </p>
+                        <p>
+                            <code>age-keygen</code> prints the matching public key to the terminal on stderr, so the
+                            pipe does not swallow it. That line is the half you have to keep, and appending it is a
+                            separate step — nothing above did it for you:
+                        </p>
+                        <div class="cmd" data-copy>
+                            <code>echo 'age1...' &gt;&gt; ~/.config/brb/recipients.txt</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">
+                            Every disc built from that point on is encrypted to both keys, and either one restores the
+                            whole set. Discs already burned are not — they were encrypted to the recipients that
+                            existed when they were written.
+                        </p>
+                        <p class="fine">
+                            The corollary: <strong>never put that file on these discs.</strong> A file stored next to
+                            its own passphrase, or on the media it unlocks, is one secret, not two.
+                        </p>
+                    </div>
+
+                    <div class="reveal">
+                        <h3>Why not just a passphrase?</h3>
+                        <p>The obvious request is "let me use a passphrase instead of a key file". brb deliberately does not allow it,
+                            for three reasons.</p>
+                        <ol class="reasons">
+                            <li>
+                                <h4>age will not express "key OR passphrase" in one file</h4>
+                                <p>A passphrase in age is an scrypt stanza, and age refuses to mix an scrypt stanza
+                                    with recipient stanzas. Encrypting with a passphrase means giving up recipients
+                                    entirely — no multi-key sets, no rescue key, no third party who can restore for
+                                    your estate.</p>
+                            </li>
+                            <li>
+                                <h4>A stolen disc is ciphertext forever</h4>
+                                <p>Whoever holds the disc holds the attack surface, on their hardware, with unlimited
+                                    time. A passphrase a human can memorise loses that race over the decades this
+                                    medium is meant to last. An X25519 key does not.</p>
+                            </li>
+                            <li>
+                                <h4>Backup would need a secret on the machine</h4>
+                                <p>Today it needs only public keys, and the one flag that wants the identity is opt-in.
+                                    Passphrase encryption would make the ability to decrypt every disc a permanent
+                                    fixture of the backup host.</p>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──────────────────────────  MEDIA  ───────────────────────────── -->
+        <section id="media" class="sec sec-alt">
+            <div class="wrap">
+                <p class="eyebrow reveal">06 — media</p>
+                <h2 class="reveal">Four disc geometries.</h2>
+                <p class="lede reveal">
+                    The image budget is what is left after reserving 2% for ISO 9660 overhead, 100 MiB for the
+                    plaintext files carried on every disc, and room for the par2 recovery data. Raising redundancy takes
+                    its share out of the same budget.
+                </p>
+                <div class="tbl-wrap reveal">
+                    <table class="tbl tbl-media">
+                        <thead>
+                            <tr>
+                                <th scope="col">DISC_TYPE</th>
+                                <th scope="col">Media</th>
+                                <th scope="col">Raw capacity</th>
+                                <th scope="col">Usable image budget</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row"><code>bd25</code></th>
+                                <td>BD-R single layer</td>
+                                <td>23.31 GiB</td>
+                                <td class="hl">20.49 GiB</td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><code>bd50</code></th>
+                                <td>BD-R DL dual layer</td>
+                                <td>46.61 GiB</td>
+                                <td class="hl">41.07 GiB</td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><code>bdxl100</code></th>
+                                <td>BDXL triple layer</td>
+                                <td>93.23 GiB</td>
+                                <td class="hl">82.22 GiB</td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><code>bdxl128</code></th>
+                                <td>BDXL quad layer</td>
+                                <td>119.21 GiB</td>
+                                <td class="hl">105.16 GiB</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="fine reveal">
+                    Budgets assume the default <code>PAR2_REDUNDANCY=10</code>. A twenty-disc set takes days to build,
+                    so <code>backup</code> records its progress after every completed disc: an interruption — a reboot,
+                    a full disk, a Ctrl-C — costs only the disc that was in flight, and
+                    <code>brb backup --resume</code> picks up at the next one.
+                </p>
+
+                <div class="split">
+                    <div class="reveal">
+                        <h3>The disc is the one variable brb does not control</h3>
+                        <p>
+                            brb writes a standard ISO and hands it to your burner. What that lands on is your choice,
+                            and it is the only part of this that a format cannot help with — no amount of par2 saves a
+                            disc whose recording layer has stopped holding a signal.
+                        </p>
+                        <p>
+                            Blu-ray starts from a better position than the media most people mean by "burning a
+                            backup". CD-R and DVD&plusmn;R record into an organic dye, and dye is what fades.
+                            <strong>BD-R HTL</strong> — the ordinary kind — already uses an inorganic recording layer
+                            instead, so the classic failure of consumer optical media largely does not apply.
+                            <strong>BD-R LTH</strong> is the exception: it is dye-based, it is usually the cheaper
+                            shelf, and it is worth checking which one you are buying.
+                        </p>
+                    </div>
+                    <div class="reveal">
+                        <h3>M-DISC</h3>
+                        <p>
+                            <a href="https://en.wikipedia.org/wiki/M-DISC" rel="noopener noreferrer"
+                                target="_blank">M-DISC</a> BD-R is the archival grade of the same idea: an inorganic
+                            layer the laser physically etches rather than bleaches. It burns and reads in any Blu-ray
+                            drive, needs no flag and no different configuration, and nothing on this page changes if
+                            you use it. It is sold as 25, 50 and 100&nbsp;GB, so <code>bd25</code>,
+                            <code>bd50</code> and <code>bdxl100</code> are the geometries available to you —
+                            <code>bdxl128</code> is not.
+                        </p>
+                        <p class="fine">
+                            The thousand-year figure on the packaging comes from accelerated-ageing extrapolation
+                            (ISO/IEC 16963), not from anyone having waited, and the honest gap between good HTL BD-R
+                            and M-DISC is narrower than the marketing suggests. It buys better odds at a higher price
+                            per gigabyte, which is a reasonable trade for a set you intend to shelve and forget. It
+                            does not buy a different kind of promise — which is why every disc still carries 10% par2,
+                            why the format is one the kernel can already mount, and why the only backup you know works
+                            is one you have restored.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────  INSTALL  ──────────────────────────── -->
+        <section id="install" class="sec">
+            <div class="wrap">
+                <p class="eyebrow reveal">07 — get it</p>
+                <h2 class="reveal">Install, then prove it restores.</h2>
+
+                <div class="split">
+                    <div class="reveal">
+                        <h3>Build</h3>
+                        <p>The Go build is the one to install — it is the only one that can write a set. Go 1.25 or
+                            newer; a prebuilt static binary needs nothing at all.</p>
+                        <div class="cmd" data-copy>
+                            <code>cd go &amp;&amp; go build -o ~/.local/bin/brb ./cmd/brb</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">The bash reader is a single self-contained script with nothing to build.
+                            Install it under a distinct name — both name themselves after however they were invoked,
+                            and one of them cannot back up.</p>
+                        <div class="cmd" data-copy>
+                            <code>install -Dm755 brb.sh ~/.local/bin/brb.sh</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+
+                        <h3>Dependencies</h3>
+                        <p>The distinction that matters is not between the two programs but between <em>writing</em>
+                            discs and <em>reading</em> them. Writing needs more tooling, and you need it today.
+                            Reading is what someone needs in fifteen years, and it is deliberately tiny.</p>
+                        <div class="cmd" data-copy>
+                            <code>sudo dnf install age squashfs-tools par2cmdline xorriso</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">
+                            On Debian and Ubuntu par2cmdline is <code>par2</code> and ddrescue is
+                            <code>gddrescue</code>; on Arch xorriso comes from <code>libisoburn</code>.
+                            <strong>squashfs-tools must be 4.5 or newer</strong> — brb feeds mksquashfs a
+                            NUL-delimited file list via <code>-cpiostyle0</code>, which does not exist in 4.4.
+                            <code>brb doctor</code> tests for the flag directly rather than parsing a version string,
+                            so trust it over any table.
+                        </p>
+                    </div>
+
+                    <div class="reveal">
+                        <h3>A typical run</h3>
+                        <pre class="run"><code><span class="t-c"># dependencies, budgets, and can you decrypt it</span>
+brb doctor
+<span class="t-c"># then back the key up OFF these discs</span>
+brb init-key
+<span class="t-c"># how many discs, before committing to anything</span>
+brb plan
+brb backup --verify-roundtrip
+brb burn all
+brb verify-disc 1
+<span class="t-c"># once, before you trust the set</span>
+brb restore /tmp/testrestore
+<span class="t-c"># staging held plaintext; wipe it</span>
+rm -rf /var/tmp/brb</code></pre>
+                        <p class="warnbox">
+                            Do the restore at least once, before you trust the set with anything. A backup you have
+                            never restored is a hypothesis, not a backup.
+                        </p>
+
+                        <h3>Known limits</h3>
+                        <ul class="limits">
+                            <li><strong>Not incremental.</strong> Every run is a full backup of the whole tree. A
+                                completed set cannot be updated in place.</li>
+                            <li><strong>Staging holds plaintext while a run is in flight.</strong> Each image is
+                                deleted as soon as it is encrypted, but one disc's worth is on disk at any moment. Put
+                                staging on an encrypted volume, or wipe it afterwards.</li>
+                            <li><strong>A single file larger than one disc cannot be stored.</strong> brb detects this
+                                during <code>plan</code> and <code>backup</code>, and stops rather than silently
+                                dropping it.</li>
+                            <li><strong>ISOs are ISO 9660 level 3, not UDF.</strong> Any Linux system reads these;
+                                some appliances that expect UDF on Blu-ray may not.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap footer-inner">
+            <p class="foot-brand">
+                <span class="brand-text" data-text="brb">brb</span>
+                <span class="dim">— Blu-ray Backup · v1.0.0 · MIT</span>
+            </p>
+            <p class="foot-links">
+                <a href="https://github.com/jzbz/brb" rel="noopener noreferrer" target="_blank">Source</a>
+                <a href="https://jz.bz/">jz.bz</a>
+            </p>
+            <p class="foot-note">No warranty. Test your restores.</p>
+        </div>
+    </footer>
+
+    <script src="assets/main.js" onerror="document.documentElement.classList.remove('js')"></script>
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="brb">
+  <title>brb</title>
+  <!-- A disc set: eight segments, one of them lost. The other seven still restore. -->
+  <g transform="rotate(-90 16 16)" fill="none" stroke-linecap="butt">
+    <!-- the lost disc, dim -->
+    <circle cx="16" cy="16" r="10.5" stroke="#454B55" stroke-width="6"
+            stroke-dasharray="6.25 2"/>
+    <!-- the seven that survive -->
+    <circle cx="16" cy="16" r="10.5" stroke="#4CC9F0" stroke-width="6"
+            stroke-dasharray="6.25 2 6.25 2 6.25 2 6.25 2 6.25 2 6.25 2 6.25 10.223"/>
+  </g>
+  <circle cx="16" cy="16" r="2.6" fill="#292A2D"/>
+  <circle cx="16" cy="16" r="2.6" fill="none" stroke="#454B55" stroke-width="1.2"/>
+</svg>
