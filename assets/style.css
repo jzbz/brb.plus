@@ -751,9 +751,21 @@ html:not(.js) .disc {
   margin-bottom: var(--s6);
 }
 
+/* The two hints are near enough the same length that they wrap alike at most
+   widths; the floor covers the band where one needs a second line and the
+   other does not. Plain text, so whole line boxes are exact here. */
 .discset-hint {
   font-size: var(--fs-sm);
   color: var(--ansi-dim);
+  min-height: 1lh;
+}
+
+@media (width < 1024px) {
+  .discset-hint { min-height: 2lh; }
+}
+
+@media (width < 480px) {
+  .discset-hint { min-height: 3lh; }
 }
 
 /* format toggle — the comparison is the argument */
@@ -923,6 +935,10 @@ html:not(.js) .disc {
 .disc-label {
   font-size: var(--fs-xs);
   letter-spacing: 0.08em;
+  /* 'piece 01' is a character longer than 'disc 01' and would wrap to two
+     lines in a narrow column, making every row of discs taller in one mode
+     than the other. It fits the 76px track on one line either way. */
+  white-space: nowrap;
   transition: color var(--t-fast) var(--ease);
 }
 
@@ -979,10 +995,24 @@ html:not(.js) .disc {
   font-size: var(--fs-sm);
 }
 
+/* The counts shrink from '412,839' to '0' as discs are lost, which is six
+   characters and enough to change the wrap once the column is narrow. */
 .ro-row {
   display: flex;
   gap: var(--s4);
   align-items: baseline;
+}
+
+@media (width < 500px) {
+  .ro-row { min-height: 2lh; }
+}
+
+@media (width < 360px) {
+  .ro-row { min-height: 3lh; }
+}
+
+@media (width < 320px) {
+  .ro-row { min-height: 4lh; }
 }
 
 .ro-key {
@@ -1001,11 +1031,37 @@ html:not(.js) .disc {
 .discset-readout .warnish { color: var(--ansi-yellow); }
 .discset-readout .badish { color: var(--ansi-red); }
 
+/* The note is a different length in every state, and a panel that resizes
+   under the pointer moves the discs out from under the next click. The wording
+   is written to land on the same number of lines wherever it can; these floors
+   absorb the one line it cannot, and are measured — re-measure them if the
+   copy in DiscSet.note/splitNote changes. */
 .ro-note {
   margin-top: var(--s3);
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
   color: var(--fg);
+  min-height: 62px;
+}
+
+@media (width < 1080px) {
+  .ro-note { min-height: 88px; }
+}
+
+@media (width < 760px) {
+  .ro-note { min-height: 112px; }
+}
+
+@media (width < 600px) {
+  .ro-note { min-height: 160px; }
+}
+
+@media (width < 480px) {
+  .ro-note { min-height: 208px; }
+}
+
+@media (width < 375px) {
+  .ro-note { min-height: 306px; }
 }
 
 /* ─────────────────────────────  cards  ───────────────────────── */

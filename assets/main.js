@@ -44,6 +44,23 @@ const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
   'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const spell = (n) => (n < WORDS.length ? WORDS[n] : String(n));
 
+/* Name a set of discs without letting the sentence grow with it: enumerating
+   ten of them both reads badly and makes the readout two lines taller than the
+   states either side of it. */
+const pad2 = (d) => String(d.n).padStart(2, '0');
+
+const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function nameDiscs(list, noun) {
+  const plural = noun + 's';
+  if (list.length === 1) return noun + ' ' + pad2(list[0]);
+  if (list.length <= 3) {
+    return plural + ' ' + list.slice(0, -1).map(pad2).join(', ') +
+      ' and ' + pad2(list[list.length - 1]);
+  }
+  return spell(list.length) + ' ' + plural;
+}
+
 /* ──────────────────────  background: a disc surface  ───────────────── */
 /* Concentric data tracks with a slowly rotating sheen, drawn as two
    composited passes so the per-frame cost stays at one image blit and one
@@ -293,11 +310,13 @@ class DiscSet {
     this.out.data.innerHTML = b(gibLeft.toFixed(2) + ' GiB') + ' of ' +
       this.totalGib.toFixed(2) + ' GiB still restore';
 
+    /* The two read to the same length on purpose: a hint that rewraps as you
+       switch mode shifts everything under it. */
     this.out.hint.textContent = split
-      ? 'Click a piece to scratch it, again to lose it. Then switch back and ' +
-        'lose the same one.'
-      : 'Click a disc to scratch it, again to lose it entirely. Then switch the ' +
-        'format underneath and lose the same one.';
+      ? 'Click a piece to scratch it, again to lose it. Then switch the format ' +
+        'back and lose the same one.'
+      : 'Click a disc to scratch it, again to lose it. Then switch the format ' +
+        'underneath and lose the same one.';
 
     this.out.note.innerHTML = split
       ? this.splitNote(lost, scratched)
@@ -305,80 +324,73 @@ class DiscSet {
   }
 
   /* ── brb: one image per disc ── */
+  /* Every branch below is written to about the same length. A readout that
+     grows and shrinks as you click moves the discs out from under the pointer,
+     and the reasoning behind each state is already in the cards underneath. */
   note(lost, scratched) {
     if (!lost.length && !scratched.length) {
       return 'Nothing is damaged. Any one of these discs restores its own files ' +
-        'without the other ' + spell(this.discs.length - 1) + '.';
+        'without the other ' + spell(this.discs.length - 1) + ' — no catalogue to ' +
+        'find first, no volume order, no parity spread across the set.';
     }
 
     if (!lost.length) {
-      const which = scratched.map((d) => String(d.n).padStart(2, '0')).join(', ');
-      return '<b class="warnish">disc ' + which + '</b> no longer reads cleanly. ' +
-        'Copy the image off and par2 rebuilds it from the recovery volumes beside ' +
-        'it — 10% of the image, computed over the <em>encrypted</em> bytes, so it ' +
-        'protects exactly what is physically on the disc. Nothing is lost, and ' +
-        'nothing is written back: a BD-R is written once. <code>ddrescue</code> is ' +
-        'what gets the rest of the bytes off a scratched disc, where <code>cp</code> ' +
-        'stops at the first I/O error.';
+      const many = scratched.length > 1;
+      return '<b class="warnish">' + capitalise(nameDiscs(scratched, 'disc')) + '</b> ' +
+        (many ? 'no longer read' : 'no longer reads') + ' cleanly. Copy ' +
+        (many ? 'the images off and par2 rebuilds them' : 'the image off and par2 rebuilds it') +
+        ' from the 10% recovery data beside ' +
+        (many ? 'each' : 'it') + ', computed over the <em>encrypted</em> bytes. ' +
+        'Nothing is lost.';
     }
 
-    const which = lost.map((d) => String(d.n).padStart(2, '0')).join(', ');
     const gone = lost.reduce((a, d) => a + d.files, 0);
     const many = lost.length > 1;
+    const left = this.discs.length - lost.length;
 
-    return '<b class="badish">disc ' + which + '</b> ' + (many ? 'are' : 'is') +
+    return '<b class="badish">' + capitalise(nameDiscs(lost, 'disc')) + '</b> ' +
+      (many ? 'are' : 'is') +
       ' gone — par2 could not repair ' + (many ? 'them' : 'it') + ', and brb refuses ' +
-      'to decrypt an image it cannot prove is whole rather than hand you plausible ' +
-      'garbage. That costs <b class="badish">' + groupDigits(gone) + ' files</b> and ' +
-      'nothing else. The other ' + spell(this.discs.length - lost.length) + ' discs are ' +
-      'untouched: no parity was spread across the set, so there is nothing for them ' +
-      'to be missing. The encrypted index on every one of them still names exactly ' +
-      'which files were on ' + (many ? 'those discs' : 'disc ' + which) + '.';
+      'to decrypt what it cannot prove is whole. That costs ' +
+      '<b class="badish">' + groupDigits(gone) + ' files</b> and nothing else; ' +
+      (left ? 'the other ' + spell(left) + ' discs are untouched.'
+            : 'there is nothing left for it to take with it.');
   }
 
   /* ── the alternative: one stream cut into pieces ── */
   splitNote(lost, scratched) {
     if (!lost.length && scratched.length) {
-      const which = scratched.map((d) => String(d.n).padStart(2, '0')).join(', ');
-      return '<b class="warnish">Piece ' + which + '</b> no longer reads cleanly, ' +
-        'and par2 repairs it exactly as it repairs a brb disc — parity over a ' +
-        'piece does not care how the bytes were cut. <b>This is where the two ' +
-        'formats agree.</b> Rot is not the interesting failure; a disc that is ' +
-        'gone is.';
+      const many = scratched.length > 1;
+      return '<b class="warnish">' + capitalise(nameDiscs(scratched, 'piece')) +
+        '</b> ' + (many ? 'no longer read' : 'no longer reads') + ' cleanly, and ' +
+        'par2 repairs ' + (many ? 'them' : 'it') + ' exactly as it repairs a brb ' +
+        'disc. <b>This is where the two formats agree</b> — rot is not the ' +
+        'interesting failure.';
     }
 
     if (!lost.length) {
-      return 'The same tree, the same ten discs — but as one tar stream, ' +
-        'compressed and encrypted once, then cut into disc-sized pieces. A shared ' +
-        'dictionary across the whole tree packs tighter than brb can, and that is ' +
-        'the real reason to want it. The cost is on the other side of the ledger: ' +
-        '<b>not one of these pieces restores anything on its own.</b> The set ' +
-        'restores only in full, in order.';
+      return 'The same tree, the same ten discs, but as one stream compressed and ' +
+        'encrypted once and then cut into pieces. It packs tighter than brb can. ' +
+        '<b>Not one of these pieces restores anything on its own.</b>';
     }
 
     const first = lost[0];
     const last = this.discs[this.discs.length - 1];
     const gone = lost.reduce((a, d) => a + d.files, 0);
-    const gib = lost.reduce((a, d) => a + d.gib, 0);
-    const pad = (d) => String(d.n).padStart(2, '0');
-    const cost = '<b class="badish">' + groupDigits(gone) + ' files, ' +
-      gib.toFixed(2) + ' GiB</b>';
+    const cost = '<b class="badish">' + groupDigits(gone) + ' files</b>';
 
     /* The last piece is the one case where a split stream is no worse. */
     if (lost.length === 1) {
-      return 'Piece <b class="badish">' + pad(first) + '</b> is gone — ' + cost +
-        '. It is the last piece, so nothing downstream of it was waiting on it. ' +
-        'This is the one position in the set where a single stream costs no more ' +
-        'than brb would, and you do not get to choose which disc you lose.';
+      return 'Piece <b class="badish">' + pad2(first) + '</b> is gone — ' + cost +
+        '. It is the last piece, so nothing was waiting on it: the one position ' +
+        'where a stream costs no more than brb, and you do not choose which disc ' +
+        'you lose.';
     }
 
-    return 'Piece <b class="badish">' + pad(first) + '</b> is gone, and pieces ' +
-      pad(this.discs[first.n]) + ' through ' + pad(last) + ' go with it — ' + cost +
-      '. There is nothing to resynchronise on: a compressor cannot pick up ' +
-      'mid-dictionary and a single age stream cannot pick up mid-ciphertext. ' +
-      'This is what <code>tar | zstd | age | split</code> gives you, and it is the ' +
-      'failure brb is built not to have. brb pays for that in packing efficiency, ' +
-      'and pays for it once.';
+    return 'Piece <b class="badish">' + pad2(first) + '</b> is gone, and pieces ' +
+      pad2(this.discs[first.n]) + ' through ' + pad2(last) + ' go with it — ' + cost +
+      '. A compressor cannot resume mid-dictionary and a single age stream cannot ' +
+      'resume mid-ciphertext.';
   }
 }
 
