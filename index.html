@@ -115,7 +115,7 @@
                         <a class="btn btn-primary" href="#install">Install</a>
                         <a class="btn" href="https://github.com/jzbz/brb" rel="noopener noreferrer"
                             target="_blank">Source</a>
-                        <span class="ver">v1.0.0 · MIT</span>
+                        <span class="ver">v0.1.0 · MIT</span>
                     </div>
                 </div>
 
@@ -124,7 +124,7 @@
                     <div class="term" id="term">
                         <div class="term-bar">
                             <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                            <span class="term-title">brb 1.0.0</span>
+                            <span class="term-title">brb 0.1.0</span>
                             <button class="term-replay" type="button" id="term-replay">replay</button>
                         </div>
                         <pre class="term-body" tabindex="0" aria-label="Recorded output from brb plan followed by brb backup"><code
@@ -412,7 +412,7 @@
                                 on Blu-ray may not.
                             </p>
                             <pre class="argv"><code>xorriso -as mkisofs -quiet -iso-level 3 -r -J -joliet-long \
-  -V BACKUP_01_OF_10 -A "brb 1.0.0" -o disc01.iso discs/disc01</code></pre>
+  -V BACKUP_01_OF_10 -A "brb 0.1.0" -o disc01.iso discs/disc01</code></pre>
                             </div>
                         </div>
                         </details>
@@ -632,33 +632,30 @@
                             short line.
                         </p>
                         <p>
-                            You can also give yourself a second way in: a rescue key. Mint a second keypair whose
-                            private half never touches the disk in plaintext —
+                            You can also give yourself a second way in: a rescue key. One flag mints a second
+                            recipient, appends it, and stores the private half so that it never touches the disk in
+                            plaintext.
                         </p>
                         <div class="cmd" data-copy>
-                            <code>age-keygen | age -p -o ~/.config/brb/rescue-identity.txt.age</code>
+                            <code>brb init-key --rescue-key</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
                         <p class="fine">
-                            The identity goes from <code>age-keygen</code>'s stdout straight into <code>age -p</code>'s
-                            stdin. It is never a file, so there is nothing to shred afterwards — which matters, because
-                            <code>shred</code> cannot promise anything on a copy-on-write, compressed or
-                            flash-translated filesystem. What lands on disk is a small file encrypted under a
-                            passphrase you chose, and it is inert without that passphrase.
+                            The identity goes straight into an age passphrase container at
+                            <code>~/.config/brb/rescue-identity.txt.age</code>, mode 0400. It is never a plaintext
+                            file, so there is nothing to shred afterwards — which matters, because <code>shred</code>
+                            cannot promise anything on a copy-on-write, compressed or flash-translated filesystem.
+                            What lands on disk is a small file encrypted under a passphrase you chose, and it is inert
+                            without that passphrase. It has to ask for the passphrase on a terminal, so
+                            <code>--yes</code> is refused rather than quietly skipping it.
                         </p>
-                        <p>
-                            <code>age-keygen</code> prints the matching public key to the terminal on stderr, so the
-                            pipe does not swallow it. That line is the half you have to keep, and appending it is a
-                            separate step — nothing above did it for you:
-                        </p>
-                        <div class="cmd" data-copy>
-                            <code>echo 'age1...' &gt;&gt; ~/.config/brb/recipients.txt</code>
-                            <button class="copy" type="button" aria-label="Copy command">copy</button>
-                        </div>
                         <p class="fine">
-                            Every disc built from that point on is encrypted to both keys, and either one restores the
-                            whole set. Discs already burned are not — they were encrypted to the recipients that
-                            existed when they were written.
+                            Safe to run later on a set that already exists. An existing <code>identity.txt</code> is
+                            left alone; every disc built from that point on is encrypted to both keys and either one
+                            restores the whole set; discs already burned keep the keys they were built with. A restore
+                            needs no special flag either way — <code>brb</code> looks for <code>identity.txt</code>,
+                            then <code>identity.txt.age</code>, then <code>rescue-identity.txt.age</code>, and uses
+                            the first it finds.
                         </p>
                         <p class="fine">
                             The corollary: <strong>never put that file on these discs.</strong> A file stored next to
@@ -801,20 +798,43 @@
 
                 <div class="split">
                     <div class="reveal">
-                        <h3>Build</h3>
-                        <p>The Go build is the one to install — it is the only one that can write a set. Go 1.25 or
-                            newer; a prebuilt static binary needs nothing at all.</p>
-                        <div class="cmd" data-copy>
-                            <code>cd go &amp;&amp; go build -o ~/.local/bin/brb ./cmd/brb</code>
+                        <h3>Download</h3>
+                        <p>
+                            The Go build is the one to install — it is the only one that can write a set. The binaries
+                            are static: no libc, no interpreter, no shared libraries, nothing to build.
+                            <a href="https://github.com/jzbz/brb/releases/latest" rel="noopener noreferrer"
+                                target="_blank">Latest release</a>.
+                        </p>
+                        <div class="cmd cmd-wrap" data-copy>
+                            <code>curl -LO https://github.com/jzbz/brb/releases/download/v0.1.0/brb-v0.1.0-linux-amd64</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
-                        <p class="fine">The bash reader is a single self-contained script with nothing to build.
-                            Install it under a distinct name — both name themselves after however they were invoked,
-                            and one of them cannot back up.</p>
-                        <div class="cmd" data-copy>
-                            <code>install -Dm755 brb.sh ~/.local/bin/brb.sh</code>
+                        <p class="fine">Check it against the hashes published beside it before you run it.</p>
+                        <div class="cmd cmd-wrap" data-copy>
+                            <code>curl -LO https://github.com/jzbz/brb/releases/download/v0.1.0/SHA512SUMS &amp;&amp; sha512sum --ignore-missing -c SHA512SUMS</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
+                        <div class="cmd" data-copy>
+                            <code>install -Dm755 brb-v0.1.0-linux-amd64 ~/.local/bin/brb</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">
+                            Substitute <code>brb-v0.1.0-linux-aarch64</code> on 64-bit ARM. The bash reader ships in
+                            the same release as <code>brb-v0.1.0.sh</code> — install it under a distinct name, because
+                            both programs name themselves after however they were invoked and one of them cannot back
+                            up.
+                        </p>
+                        <div class="cmd" data-copy>
+                            <code>install -Dm755 brb-v0.1.0.sh ~/.local/bin/brb.sh</code>
+                            <button class="copy" type="button" aria-label="Copy command">copy</button>
+                        </div>
+                        <p class="fine">
+                            Building from source needs Go 1.25 or newer, and the release carries a tarball with its
+                            dependencies vendored so it rebuilds with no network. Note that <code>go install</code>
+                            does not work on this repository and no spelling of it does: the module declares itself as
+                            <code>github.com/jzbz/brb</code> while living in the repository's <code>go/</code>
+                            subdirectory. Take a binary, or build from a checkout.
+                        </p>
 
                         <h3>Dependencies</h3>
                         <p>The distinction that matters is not between the two programs but between <em>writing</em>
@@ -866,6 +886,13 @@ rm -rf /var/tmp/brb</code></pre>
                                 dropping it.</li>
                             <li><strong>ISOs are ISO 9660 level 3, not UDF.</strong> Any Linux system reads these;
                                 some appliances that expect UDF on Blu-ray may not.</li>
+                            <li><strong><code>restore</code> overwrites its destination</strong>, mode and mtime
+                                included. A destination that is not empty is listed and confirmed first — but
+                                <code>--yes</code> answers that confirmation too, so restoring into a live directory
+                                with <code>--yes</code> overwrites it without asking. Restore into an empty directory
+                                and merge by hand if that is not what you want.</li>
+                            <li><strong>The set is not signed.</strong> The format has no signing key: hashes and par2
+                                prove a disc is intact, not who wrote it.</li>
                         </ul>
                     </div>
                 </div>
@@ -877,7 +904,7 @@ rm -rf /var/tmp/brb</code></pre>
         <div class="wrap footer-inner">
             <p class="foot-brand">
                 <span class="brand-text" data-text="brb">brb</span>
-                <span class="dim">— Blu-ray Backup · v1.0.0 · MIT</span>
+                <span class="dim">— Blu-ray Backup · v0.1.0 · MIT</span>
             </p>
             <p class="foot-links">
                 <a href="https://github.com/jzbz/brb" rel="noopener noreferrer" target="_blank">Source</a>

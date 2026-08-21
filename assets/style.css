@@ -485,6 +485,15 @@ body::after {
   color: var(--accent);
 }
 
+/* Long URLs have nothing meaningful to preserve in their whitespace, and a
+   download line whose filename is off the right edge is not much of an
+   instruction. The copy button still yields the exact text. */
+.cmd-wrap code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: visible;
+}
+
 .cmd-final {
   border-color: rgb(76 201 240 / 0.45);
   background: rgb(76 201 240 / 0.06);
