@@ -115,7 +115,7 @@
                         <a class="btn btn-primary" href="#install">Install</a>
                         <a class="btn" href="https://github.com/jzbz/brb" rel="noopener noreferrer"
                             target="_blank">Source</a>
-                        <span class="ver">v0.1.1 · MIT</span>
+                        <span class="ver">MIT</span>
                     </div>
                 </div>
 
@@ -124,7 +124,7 @@
                     <div class="term" id="term">
                         <div class="term-bar">
                             <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-                            <span class="term-title">brb 0.1.1</span>
+                            <span class="term-title">brb</span>
                             <button class="term-replay" type="button" id="term-replay">replay</button>
                         </div>
                         <pre class="term-body" tabindex="0" aria-label="Recorded output from brb plan followed by brb backup"><code
@@ -412,7 +412,7 @@
                                 on Blu-ray may not.
                             </p>
                             <pre class="argv"><code>xorriso -as mkisofs -quiet -iso-level 3 -r -J -joliet-long \
-  -V BACKUP_01_OF_10 -A "brb 0.1.1" -o disc01.iso discs/disc01</code></pre>
+  -V BACKUP_01_OF_10 -A "brb &lt;version&gt;" -o disc01.iso discs/disc01</code></pre>
                             </div>
                         </div>
                         </details>
@@ -609,8 +609,8 @@
                             Where the two genuinely differ, the check is written the way it ought to pass and marked
                             <code>XFAIL</code> with the divergence named. An <code>XFAIL</code> that starts passing is
                             reported as <code>XPASS</code> and counted as a failure, so a fixed divergence gets
-                            promoted to a real assertion instead of sitting in the ledger forever. As of
-                            <span class="nowrap">v0.1.1</span> that ledger is empty.
+                            promoted to a real assertion instead of sitting in the ledger forever. The suite prints how many
+                            remain at the end of every run.
                         </p>
                     </div>
                 </div>
@@ -807,31 +807,32 @@
                         <h3>Download</h3>
                         <p>
                             The Go build is the one to install — it is the only one that can write a set. The binaries
-                            are static: no libc, no interpreter, no shared libraries, nothing to build.
+                            are static: no libc, no interpreter, no shared libraries, nothing to build. Take the one
+                            for your architecture from the
                             <a href="https://github.com/jzbz/brb/releases/latest" rel="noopener noreferrer"
-                                target="_blank">Latest release</a>.
+                                target="_blank">latest release</a>, together with <code>SHA256SUMS</code> and the
+                            detached signature beside it.
+                        </p>
+                        <p class="fine">
+                            One <code>SHA256SUMS</code> covers every artifact in the release and is signed by hand;
+                            there is no second hash file, because an unsigned one next to a signed one is a downgrade
+                            path rather than a convenience. Check it before you run anything.
                         </p>
                         <div class="cmd cmd-wrap" data-copy>
-                            <code>curl -LO https://github.com/jzbz/brb/releases/download/v0.1.1/brb-v0.1.1-linux-amd64</code>
-                            <button class="copy" type="button" aria-label="Copy command">copy</button>
-                        </div>
-                        <p class="fine">Check it against the hashes published beside it before you run it.</p>
-                        <div class="cmd cmd-wrap" data-copy>
-                            <code>curl -LO https://github.com/jzbz/brb/releases/download/v0.1.1/SHA512SUMS &amp;&amp; sha512sum --ignore-missing -c SHA512SUMS</code>
+                            <code>gpg --verify SHA256SUMS.asc SHA256SUMS &amp;&amp; sha256sum --ignore-missing -c SHA256SUMS</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
                         <div class="cmd" data-copy>
-                            <code>install -Dm755 brb-v0.1.1-linux-amd64 ~/.local/bin/brb</code>
+                            <code>install -Dm755 brb-v*-linux-amd64 ~/.local/bin/brb</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
                         <p class="fine">
-                            Substitute <code>brb-v0.1.1-linux-aarch64</code> on 64-bit ARM. The bash reader ships in
-                            the same release as <code>brb-v0.1.1.sh</code> — install it under a distinct name, because
-                            both programs name themselves after however they were invoked and one of them cannot back
-                            up.
+                            Substitute <code>brb-v*-linux-aarch64</code> on 64-bit ARM. The bash reader ships in the
+                            same release as <code>brb-v*.sh</code> — install it under a distinct name, because both
+                            programs name themselves after however they were invoked and one of them cannot back up.
                         </p>
                         <div class="cmd" data-copy>
-                            <code>install -Dm755 brb-v0.1.1.sh ~/.local/bin/brb.sh</code>
+                            <code>install -Dm755 brb-v*.sh ~/.local/bin/brb.sh</code>
                             <button class="copy" type="button" aria-label="Copy command">copy</button>
                         </div>
                         <p class="fine">
@@ -911,11 +912,11 @@ rm -rf /var/tmp/brb</code></pre>
         <div class="wrap footer-inner">
             <p class="foot-brand">
                 <span class="brand-text" data-text="brb">brb</span>
-                <span class="dim">— Blu-ray Backup · v0.1.1 · MIT</span>
+                <span class="dim">— Blu-ray Backup · MIT</span>
             </p>
             <p class="foot-links">
                 <a href="https://github.com/jzbz/brb" rel="noopener noreferrer" target="_blank">Source</a>
-                <a href="https://jz.bz/">jz.bz</a>
+                <a href="https://jz.bz/">jz</a>
             </p>
             <p class="foot-note">No warranty. Test your restores.</p>
         </div>
