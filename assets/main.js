@@ -5,8 +5,14 @@
 'use strict';
 
 /* Tell the head snippet the enhancement script really ran; without this it
-   withdraws the .js class and every .reveal stays visible. */
+   withdraws the .js class and every .reveal stays visible. Re-arm the class
+   as well: on a slow connection the 2s withdrawal timer can fire before this
+   file arrives, and without the class the mode toggle, reset and replay
+   controls stay display:none even though their handlers work. This script is
+   parser-blocking, so it always runs before DOMContentLoaded — the re-hidden
+   .reveal elements are picked up by Reveal in the same pass as normal. */
 document.documentElement.dataset.enhanced = '1';
+document.documentElement.classList.add('js');
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -286,10 +292,11 @@ class DiscSet {
 
     this.discs.forEach((d, i) => {
       const s = this.state[i];
+      const tag = (split ? 'piece ' : 'disc ') + pad2(d);
       d.el.dataset.state = s;
-      d.label.textContent = (split ? 'piece ' : 'disc ') + String(d.n).padStart(2, '0');
+      d.label.textContent = tag;
       d.el.setAttribute('aria-label',
-        (split ? 'piece ' : 'disc ') + String(d.n).padStart(2, '0') + ', ' +
+        tag + ', ' +
         groupDigits(d.files) + ' files, ' +
         (s === 'ok' ? 'readable' : s === 'scratched' ? 'scratched but repairable' : 'lost') +
         '. Activate to change.');
@@ -403,7 +410,6 @@ class Terminal {
     this.barFinal = this.bar ? this.bar.textContent : '';
     this.barBytes = this.bar ? Number(this.bar.dataset.bytes) : 0;
     this.timers = [];
-    this.playing = false;
 
     const replay = document.getElementById('term-replay');
     if (replay) replay.addEventListener('click', () => this.play());
@@ -455,11 +461,6 @@ class Terminal {
 
       t += isCmd ? 240 : isBar ? 1150 : Math.min(34 + text.length * 1.1, 120);
     });
-
-    this.at(t + 300, () => {
-      this.playing = false;
-    });
-    this.playing = true;
   }
 
   runBar() {

@@ -236,17 +236,23 @@ body::after {
 
 .brand-text::before {
   text-shadow: -2px 0 #ff00de;
-  animation: glitch 3s infinite linear alternate-reverse;
 }
 
 .brand-text::after {
   text-shadow: 2px 0 #00fff9;
-  animation: glitch 2.2s infinite linear alternate-reverse;
 }
 
-.brand:hover .brand-text::before,
+/* The animation lives on the hover rule, not the pseudo-element: at opacity 0
+   it is invisible, but an infinite clip-path animation still ticks whether
+   anyone can see it or not. */
+.brand:hover .brand-text::before {
+  opacity: 0.75;
+  animation: glitch 3s infinite linear alternate-reverse;
+}
+
 .brand:hover .brand-text::after {
   opacity: 0.75;
+  animation: glitch 2.2s infinite linear alternate-reverse;
 }
 
 @keyframes glitch {
@@ -1091,7 +1097,6 @@ html:not(.js) .disc {
 /* ───────────────────────────  pipeline  ──────────────────────── */
 .pipe {
   list-style: none;
-  counter-reset: none;
   border-top: 1px solid var(--line);
 }
 
